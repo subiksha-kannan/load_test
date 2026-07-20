@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadtest
+  labels:
+    app: loadtest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadtest
+  template:
+    metadata:
+      labels:
+        app: loadtest
+    spec:
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: present
+          effect: NoSchedule
+      containers:
+        - name: locust
+          image: locustio/locust:2.32.3
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install --no-cache-dir \
+                'tritonclient[http]==2.51.0' numpy==1.26.4 pillow==10.4.0 && \
+              exec locust -f /locustfiles/locustfile.py --processes 4
+          ports:
+            - {containerPort: 8089, name: http}
+          resources:
+            requests: {cpu: "4", memory: 4Gi}
+            limits:   {cpu: "4", memory: 4Gi}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          volumeMounts:
+            - {name: locustfiles, mountPath: /locustfiles}
+      volumes:
+        - name: locustfiles
+          configMap:
+            name: loadtest-locustfiles
