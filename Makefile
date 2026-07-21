@@ -1,17 +1,21 @@
-TEST      ?= $(error TEST is required, e.g. TEST=triton-metadata-attr-singapore)
+TEST      ?= $(error TEST is required, e.g. TEST=triton-metadata-attr-g4)
 ENV_FILE  := tests/$(TEST)/env.sh
 CONTEXT   := $(shell sh -c '. $(ENV_FILE) && echo $$CONTEXT')
 NAMESPACE := $(shell sh -c '. $(ENV_FILE) && echo $$NAMESPACE')
 KUBECTL    = kubectl --context=$(CONTEXT) -n $(NAMESPACE)
 DEPLOY     = loadtest-$(TEST)
 
-.PHONY: deploy diff tail portforward status delete
+.PHONY: sync deploy diff tail portforward status delete
 
-deploy:
+# Kustomize cannot read files outside the test dir — copy shared modules in.
+sync:
+	cp shared/triton_http.py shared/payloads.py tests/$(TEST)/
+
+deploy: sync
 	kubectl --context=$(CONTEXT) apply -k tests/$(TEST)
 	$(KUBECTL) rollout status deploy/$(DEPLOY)
 
-diff:
+diff: sync
 	kubectl --context=$(CONTEXT) diff -k tests/$(TEST) || true
 
 tail:
@@ -24,5 +28,5 @@ portforward:
 status:
 	$(KUBECTL) get deploy,pods,svc -l app=loadtest
 
-delete:
+delete: sync
 	kubectl --context=$(CONTEXT) delete -k tests/$(TEST)

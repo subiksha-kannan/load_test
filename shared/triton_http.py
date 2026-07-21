@@ -35,7 +35,9 @@ class TritonHTTPUser(User):
                                outputs=outputs, request_id=req_id)
             exc = None
         except Exception as e:
-            exc = e
+            # Surface Triton's message — bare InferenceServerException() hides the cause.
+            msg = getattr(e, "message", None) or str(e) or repr(e)
+            exc = Exception(f"{type(e).__name__}: {msg}")
 
         events.request.fire(
             request_type="TRITON",
