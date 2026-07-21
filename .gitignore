@@ -1,0 +1,5 @@
+# Copied into tests/ by `make sync` — edit shared/ instead
+tests/*/triton_http.py
+tests/*/payloads.py
+.DS_Store
+results/

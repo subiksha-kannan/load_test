@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: mercari-ml-platform-jp-dev
-nameSuffix: -triton-metadata-attr-singapore
+namespace: mercari-embeddings-jp-dev                      # ← different
+nameSuffix: -triton-metadata-attr-l4
 
 resources:
   - ../../k8s/base
@@ -10,8 +10,8 @@ configMapGenerator:
   - name: loadtest-locustfiles
     files:
       - locustfile.py
-      - ../../shared/triton_http.py
-      - ../../shared/payloads.py
+      - triton_http.py
+      - payloads.py
 
 patches:
   - target: {kind: Deployment, name: loadtest}
@@ -19,9 +19,9 @@ patches:
       - op: add
         path: /spec/template/spec/containers/0/env
         value:
-          - {name: TRITON_URL,    value: "triton-metadata-attribute-prediction.mercari-ml-platform-jp-dev.svc.cluster.local:8000"}
-          - {name: LOAD_MODE,     value: "ramp"}       # ← change to "constant" for Test 3
-          - {name: USER_RPS,      value: "2.0"}         # only used when LOAD_MODE=constant
+          - {name: TRITON_URL,    value: "triton-metadata-attribute-prediction.mercari-embeddings-jp-dev.svc.cluster.local:8000"}   # ← different
+          - {name: LOAD_MODE,     value: "ramp"}           # ← "ramp" for Tests 1+2, "constant" for Tests 3+4
+          - {name: USER_RPS,      value: "2.0"}
           - {name: IMAGE_SIZE,    value: "512"}
           - {name: TOP_N,         value: "5"}
           - {name: ATTRIBUTE_IDS, value: "0003f154-f3e3-49ce-aaaf-8c1f3c3a0241,0110cbe3-e88a-4a19-82ce-5ee402268863,019ecc2f-d3a8-460d-ae2a-c8c647f22ed7,01fab970-4646-423f-b7f0-a080e65fd94a,022dc199-2052-4f4a-a6b7-84569384d8bc"}

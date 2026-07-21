@@ -4,7 +4,7 @@ import numpy as np
 from locust import LoadTestShape, constant_throughput, task
 
 from triton_http import TritonHTTPUser
-from payloads import random_jpeg_bytes, bytes_input, numpy_input
+from payloads import random_jpeg_bytes
 
 
 # ── Mode selection (set in kustomization.yaml env) ────────────────────────
@@ -27,11 +27,23 @@ class MetadataPipelineUser(TritonHTTPUser):
         wait_time = constant_throughput(USER_RPS)
 
     def build_inputs(self):
-        return [
-            bytes_input("INPUT_IMAGE",   [random_jpeg_bytes(IMAGE_SIZE)]),
-            bytes_input("ATTRIBUTE_IDS", [a.encode() for a in ATTRIBUTE_IDS]),
-            numpy_input("TOP_N", np.array([[TOP_N]], dtype=np.int32), "INT32"),
-        ]
+        # Match team load-test-http.py shapes:
+        #   INPUT_IMAGE:   [1, 1]
+        #   ATTRIBUTE_IDS: [1, N]  ← NOT [N, 1]
+        #   TOP_N:         [1, 1]
+        import tritonclient.http as httpclient
+
+        image_np = np.array([[random_jpeg_bytes(IMAGE_SIZE)]], dtype=object)
+        attrs_np = np.array([ATTRIBUTE_IDS], dtype=object)  # shape [1, N]
+        topn_np = np.array([[TOP_N]], dtype=np.int32)
+
+        inp_image = httpclient.InferInput("INPUT_IMAGE", image_np.shape, "BYTES")
+        inp_image.set_data_from_numpy(image_np)
+        inp_attrs = httpclient.InferInput("ATTRIBUTE_IDS", attrs_np.shape, "BYTES")
+        inp_attrs.set_data_from_numpy(attrs_np)
+        inp_topn = httpclient.InferInput("TOP_N", topn_np.shape, "INT32")
+        inp_topn.set_data_from_numpy(topn_np)
+        return [inp_image, inp_attrs, inp_topn]
 
     @task
     def predict(self):
